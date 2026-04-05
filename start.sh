@@ -45,7 +45,8 @@ echo "[OK] sing-box 配置已生成"
 
 # ========== 4. 启动 usque (SOCKS5 模式) ==========
 /usr/local/bin/usque -c /etc/engine/usque.json socks \
-    -b 127.0.0.1 -p 1080 &
+    -b 127.0.0.1 -p 1080 \
+    -d 1.1.1.1 -d 1.0.0.1 -d 2606:4700:4700::1111 &
 USQUE_PID=$!
 
 # 等待 usque 连接成功
