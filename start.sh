@@ -16,20 +16,16 @@ echo "[OK] WS 路径设为 ${WS_PATH}"
 
 # ========== 3. 启动 dnsmasq 本地 DNS 缓存 ==========
 cat > /etc/dnsmasq.conf <<EOF
-# 不读取 /etc/resolv.conf，使用我们指定的上游 DNS
-no-resolv
-# 上游 DNS 服务器（容器直连，不走 MASQUE）
-server=8.8.8.8
-server=8.8.4.4
-server=1.1.1.1
+# 使用原始备用的官方内网 DNS 作为上游 (如 Docker 的 127.0.0.11 或 云提供商的 VPC DNS)
+resolv-file=/etc/resolv.conf.bak
 # 大缓存：10000 条记录
 cache-size=10000
 # 最小缓存 TTL：600 秒（即使上游返回短 TTL 也至少缓存 10 分钟）
 min-cache-ttl=600
-# 负面缓存（解析失败也缓存 60 秒，避免重复超时查询）
+# 负面缓存（解析失败也强制缓存 60 秒，专治死链广告域名重复查询）
 neg-ttl=60
-# 并发 DNS 查询限制
-dns-forward-max=150
+# 并发 DNS 查询限制（防雪崩）
+dns-forward-max=300
 # 不使用 hosts 文件
 no-hosts
 # 前台运行（我们自己后台化）
