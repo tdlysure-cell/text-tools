@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TextKit - 在线文本分析工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #e0e0e0; min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 2rem 1rem;
+        }
+        h1 {
+            font-size: 2rem; margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #00d2ff, #7b2ff7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .subtitle { color: #888; margin-bottom: 2rem; font-size: 0.9rem; }
+        .container {
+            width: 100%; max-width: 800px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 2rem;
+            backdrop-filter: blur(10px);
+        }
+        textarea {
+            width: 100%; height: 200px; padding: 1rem;
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px; color: #e0e0e0; font-size: 1rem;
+            resize: vertical; outline: none; transition: border 0.3s;
+        }
+        textarea:focus { border-color: #7b2ff7; }
+        .stats {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem; margin-top: 1.5rem;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; padding: 1.2rem; text-align: center;
+            transition: transform 0.2s, border-color 0.3s;
+        }
+        .stat-card:hover { transform: translateY(-2px); border-color: rgba(123,47,247,0.4); }
+        .stat-value {
+            font-size: 1.8rem; font-weight: 700;
+            background: linear-gradient(90deg, #00d2ff, #7b2ff7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .stat-label { font-size: 0.8rem; color: #888; margin-top: 0.3rem; }
+        footer { margin-top: 2rem; color: #555; font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+    <h1>TextKit</h1>
+    <p class="subtitle">轻量在线文本分析工具</p>
+    <div class="container">
+        <textarea id="input" placeholder="在此粘贴或输入文本进行分析..."></textarea>
+        <div class="stats">
+            <div class="stat-card"><div class="stat-value" id="chars">0</div><div class="stat-label">字符数</div></div>
+            <div class="stat-card"><div class="stat-value" id="words">0</div><div class="stat-label">词数</div></div>
+            <div class="stat-card"><div class="stat-value" id="lines">0</div><div class="stat-label">行数</div></div>
+            <div class="stat-card"><div class="stat-value" id="sentences">0</div><div class="stat-label">句子数</div></div>
+        </div>
+    </div>
+    <footer>&copy; 2025 TextKit</footer>
+    <script>
+        const input = document.getElementById('input');
+        const update = () => {
+            const t = input.value;
+            document.getElementById('chars').textContent = t.length;
+            document.getElementById('words').textContent = t.trim() ? t.trim().split(/\s+/).length : 0;
+            document.getElementById('lines').textContent = t ? t.split('\n').length : 0;
+            document.getElementById('sentences').textContent = (t.match(/[.!?。！？]+/g) || []).length;
+        };
+        input.addEventListener('input', update);
+    </script>
+</body>
+</html>
