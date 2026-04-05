@@ -90,7 +90,6 @@ cat > /etc/engine/config.json <<EOF
     {"tag": "direct", "type": "direct"}
   ],
   "route": {
-    "default_domain_strategy": "prefer_ipv4",
     "final": "usque-socks"
   }
 }
