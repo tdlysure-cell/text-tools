@@ -23,20 +23,12 @@ cat > /etc/engine/config.json <<EOF
   "dns": {
     "servers": [
       {
-        "tag": "cf-doh",
-        "address": "https://1.1.1.1/dns-query",
-        "detour": "usque-socks",
-        "strategy": "prefer_ipv4"
-      },
-      {
-        "tag": "cf-plain",
-        "address": "1.1.1.1",
-        "detour": "usque-socks"
+        "tag": "google-dns",
+        "address": "8.8.8.8",
+        "detour": "direct"
       }
     ],
-    "strategy": "prefer_ipv4",
-    "disable_cache": false,
-    "disable_expire": false
+    "strategy": "prefer_ipv4"
   },
   "inbounds": [
     {
@@ -60,19 +52,16 @@ cat > /etc/engine/config.json <<EOF
   "route": {"final": "usque-socks"}
 }
 EOF
-echo "[OK] sing-box 配置已生成 (DNS缓存+域名预解析已启用)"
+echo "[OK] sing-box 配置已生成 (DNS走容器直连, 流量走usque)"
 
 # ========== 4. 启动 usque (SOCKS5 模式) ==========
 /usr/local/bin/usque -c /etc/engine/usque.json socks \
-    -b 127.0.0.1 -p 1080 \
-    -d 1.1.1.1 -d 1.0.0.1 &
+    -b 127.0.0.1 -p 1080 &
 USQUE_PID=$!
 
-# 等待 usque 连接成功
 echo "[..] 等待 usque 连接..."
 sleep 8
 
-# 检查 usque 是否仍在运行
 if kill -0 $USQUE_PID 2>/dev/null; then
     echo "[OK] usque SOCKS5 已启动 (PID: $USQUE_PID)"
 else
@@ -85,7 +74,6 @@ fi
 ENGINE_PID=$!
 sleep 2
 
-# 检查 sing-box 是否仍在运行
 if kill -0 $ENGINE_PID 2>/dev/null; then
     echo "[OK] sing-box 已启动 (PID: $ENGINE_PID, 端口: 10801)"
 else
