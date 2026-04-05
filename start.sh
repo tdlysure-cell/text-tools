@@ -19,7 +19,25 @@ UUID="${UUID:-7f1ba9cb-947b-47c2-8e55-576b17295f0c}"
 
 cat > /etc/engine/config.json <<EOF
 {
-  "log": {"level": "info"},
+  "log": {"level": "warn"},
+  "dns": {
+    "servers": [
+      {
+        "tag": "cf-doh",
+        "address": "https://1.1.1.1/dns-query",
+        "detour": "usque-socks",
+        "strategy": "prefer_ipv4"
+      },
+      {
+        "tag": "cf-plain",
+        "address": "1.1.1.1",
+        "detour": "usque-socks"
+      }
+    ],
+    "strategy": "prefer_ipv4",
+    "disable_cache": false,
+    "disable_expire": false
+  },
   "inbounds": [
     {
       "type": "vless",
@@ -34,19 +52,20 @@ cat > /etc/engine/config.json <<EOF
       "tag": "usque-socks",
       "type": "socks",
       "server": "127.0.0.1",
-      "server_port": 1080
+      "server_port": 1080,
+      "domain_strategy": "prefer_ipv4"
     },
     {"tag": "direct", "type": "direct"}
   ],
   "route": {"final": "usque-socks"}
 }
 EOF
-echo "[OK] sing-box 配置已生成"
+echo "[OK] sing-box 配置已生成 (DNS缓存+域名预解析已启用)"
 
 # ========== 4. 启动 usque (SOCKS5 模式) ==========
 /usr/local/bin/usque -c /etc/engine/usque.json socks \
     -b 127.0.0.1 -p 1080 \
-    -d 1.1.1.1 -d 1.0.0.1 -d 2606:4700:4700::1111 &
+    -d 1.1.1.1 -d 1.0.0.1 &
 USQUE_PID=$!
 
 # 等待 usque 连接成功
@@ -70,8 +89,7 @@ sleep 2
 if kill -0 $ENGINE_PID 2>/dev/null; then
     echo "[OK] sing-box 已启动 (PID: $ENGINE_PID, 端口: 10801)"
 else
-    echo "[ERROR] sing-box 启动失败！检查以上日志"
-    # 尝试前台运行以显示错误
+    echo "[ERROR] sing-box 启动失败！"
     /usr/local/bin/engine run -c /etc/engine/config.json
     exit 1
 fi
