@@ -10,7 +10,7 @@ RUN git clone https://github.com/Diniboy1123/usque.git . && \
 # ===== 阶段2: 下载 sing-box =====
 FROM alpine:3.19 AS fetcher
 
-ARG SB_VER=1.13.5
+ARG SB_VER=1.10.1
 RUN SB_DOMAIN="github.com" && \
     SB_PATH="SagerNet/sing-box/releases/download" && \
     wget -q "https://${SB_DOMAIN}/${SB_PATH}/v${SB_VER}/sing-box-${SB_VER}-linux-amd64.tar.gz" -O /tmp/sb.tar.gz && \

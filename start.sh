@@ -19,7 +19,7 @@ UUID="${UUID:-7f1ba9cb-947b-47c2-8e55-576b17295f0c}"
 
 cat > /etc/engine/config.json <<EOF
 {
-  "log": {"level": "fatal"},
+  "log": {"level": "info"},
   "inbounds": [
     {
       "type": "vless",
@@ -46,14 +46,35 @@ echo "[OK] sing-box 配置已生成"
 # ========== 4. 启动 usque (SOCKS5 模式) ==========
 /usr/local/bin/usque -c /etc/engine/usque.json socks \
     -b 127.0.0.1 -p 1080 &
-sleep 2
-echo "[OK] usque SOCKS5 已启动 (127.0.0.1:1080)"
+USQUE_PID=$!
+
+# 等待 usque 连接成功
+echo "[..] 等待 usque 连接..."
+sleep 8
+
+# 检查 usque 是否仍在运行
+if kill -0 $USQUE_PID 2>/dev/null; then
+    echo "[OK] usque SOCKS5 已启动 (PID: $USQUE_PID)"
+else
+    echo "[ERROR] usque 启动失败"
+    exit 1
+fi
 
 # ========== 5. 启动 sing-box ==========
 /usr/local/bin/engine run -c /etc/engine/config.json &
-sleep 1
-echo "[OK] sing-box 已启动 (127.0.0.1:10801)"
+ENGINE_PID=$!
+sleep 2
+
+# 检查 sing-box 是否仍在运行
+if kill -0 $ENGINE_PID 2>/dev/null; then
+    echo "[OK] sing-box 已启动 (PID: $ENGINE_PID, 端口: 10801)"
+else
+    echo "[ERROR] sing-box 启动失败！检查以上日志"
+    # 尝试前台运行以显示错误
+    /usr/local/bin/engine run -c /etc/engine/config.json
+    exit 1
+fi
 
 # ========== 6. 启动 nginx (前台) ==========
-echo "[OK] 启动 nginx..."
+echo "[OK] 所有服务就绪，启动 nginx..."
 nginx -g 'daemon off;'
