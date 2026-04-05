@@ -21,7 +21,7 @@ RUN SB_DOMAIN="github.com" && \
 # ===== 阶段3: 运行镜像 =====
 FROM alpine:3.19
 
-RUN apk add --no-cache nginx ca-certificates libc6-compat && \
+RUN apk add --no-cache nginx ca-certificates libc6-compat dnsmasq && \
     mkdir -p /etc/engine /www /run/nginx
 
 # 从构建阶段复制二进制

@@ -14,7 +14,47 @@ WS_PATH="${WS_PATH:-/x3k9m7q}"
 sed -i "s|/x3k9m7q|${WS_PATH}|g" /etc/nginx/nginx.conf
 echo "[OK] WS 路径设为 ${WS_PATH}"
 
-# ========== 3. 生成 sing-box 配置 ==========
+# ========== 3. 启动 dnsmasq 本地 DNS 缓存 ==========
+cat > /etc/dnsmasq.conf <<EOF
+# 不读取 /etc/resolv.conf，使用我们指定的上游 DNS
+no-resolv
+# 上游 DNS 服务器（容器直连，不走 MASQUE）
+server=8.8.8.8
+server=8.8.4.4
+server=1.1.1.1
+# 大缓存：10000 条记录
+cache-size=10000
+# 最小缓存 TTL：600 秒（即使上游返回短 TTL 也至少缓存 10 分钟）
+min-cache-ttl=600
+# 负面缓存（解析失败也缓存 60 秒，避免重复超时查询）
+neg-ttl=60
+# 并发 DNS 查询限制
+dns-forward-max=150
+# 不使用 hosts 文件
+no-hosts
+# 前台运行（我们自己后台化）
+keep-in-foreground
+# 监听地址
+listen-address=127.0.0.1
+bind-interfaces
+EOF
+
+# 先备份原始 resolv.conf，然后指向 dnsmasq
+cp /etc/resolv.conf /etc/resolv.conf.bak
+dnsmasq &
+DNSMASQ_PID=$!
+sleep 1
+
+if kill -0 $DNSMASQ_PID 2>/dev/null; then
+    # 将系统 DNS 指向本地 dnsmasq
+    echo "nameserver 127.0.0.1" > /etc/resolv.conf
+    echo "[OK] dnsmasq DNS 缓存已启动 (PID: $DNSMASQ_PID, 缓存: 10000条, min-TTL: 600s)"
+else
+    echo "[WARN] dnsmasq 启动失败，使用默认 DNS"
+    cp /etc/resolv.conf.bak /etc/resolv.conf
+fi
+
+# ========== 4. 生成 sing-box 配置 ==========
 UUID="${UUID:-7f1ba9cb-947b-47c2-8e55-576b17295f0c}"
 
 cat > /etc/engine/config.json <<EOF
@@ -23,7 +63,7 @@ cat > /etc/engine/config.json <<EOF
   "dns": {
     "servers": [
       {
-        "tag": "google-dns",
+        "tag": "dns-direct",
         "address": "8.8.8.8",
         "detour": "direct"
       }
@@ -36,7 +76,8 @@ cat > /etc/engine/config.json <<EOF
       "listen": "127.0.0.1",
       "listen_port": 10801,
       "users": [{"uuid": "${UUID}"}],
-      "transport": {"type": "ws", "path": "${WS_PATH}"}
+      "transport": {"type": "ws", "path": "${WS_PATH}"},
+      "sniff": true
     }
   ],
   "outbounds": [
@@ -44,17 +85,19 @@ cat > /etc/engine/config.json <<EOF
       "tag": "usque-socks",
       "type": "socks",
       "server": "127.0.0.1",
-      "server_port": 1080,
-      "domain_strategy": "prefer_ipv4"
+      "server_port": 1080
     },
     {"tag": "direct", "type": "direct"}
   ],
-  "route": {"final": "usque-socks"}
+  "route": {
+    "default_domain_strategy": "prefer_ipv4",
+    "final": "usque-socks"
+  }
 }
 EOF
-echo "[OK] sing-box 配置已生成 (DNS走容器直连, 流量走usque)"
+echo "[OK] sing-box 配置已生成 (route级域名预解析 + dnsmasq缓存)"
 
-# ========== 4. 启动 usque (SOCKS5 模式) ==========
+# ========== 5. 启动 usque (SOCKS5 模式, 不指定 -d 使用系统 DNS → dnsmasq) ==========
 /usr/local/bin/usque -c /etc/engine/usque.json socks \
     -b 127.0.0.1 -p 1080 &
 USQUE_PID=$!
@@ -69,7 +112,7 @@ else
     exit 1
 fi
 
-# ========== 5. 启动 sing-box ==========
+# ========== 6. 启动 sing-box ==========
 /usr/local/bin/engine run -c /etc/engine/config.json &
 ENGINE_PID=$!
 sleep 2
@@ -82,6 +125,6 @@ else
     exit 1
 fi
 
-# ========== 6. 启动 nginx (前台) ==========
+# ========== 7. 启动 nginx (前台) ==========
 echo "[OK] 所有服务就绪，启动 nginx..."
 nginx -g 'daemon off;'
